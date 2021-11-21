@@ -162,7 +162,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     // Called when the user selects a device to present to. In response we
     // will request an exclusive session from that device.
     function onRequestSession() {
-      return navigator.xr.requestSession(isAR?'immersive-ar':'immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] }).then(onSessionStarted);
+      return navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] }).then(onSessionStarted);
     }
 
     // Called when we've successfully acquired a XRSession. In response we
@@ -419,9 +419,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       // Per-frame scene teardown. Nothing WebXR specific here.
       scene.endFrame();
     }
-
-    // Start the XR application.
-    initXR();
   </script>
 </body>
 
