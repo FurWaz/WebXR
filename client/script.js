@@ -1,5 +1,7 @@
-import * as THREE from 'https://unpkg.com/three/build/three.module.js';
-import { VRButton } from 'https://unpkg.com/three/examples/jsm/webxr/VRButton.js';
+import * as THREE from 'https://unpkg.com/three@0.126.0/build/three.module.js';
+import { VRButton } from 'https://unpkg.com/three@0.126.0/examples/jsm/webxr/VRButton.js';
+import { GLTFLoader } from 'https://unpkg.com/three@0.126.0/examples/jsm/loaders/GLTFLoader.js';
+//import { GLTFLoader } from 'https://threejsfundamentals.org/threejs/resources/threejs/r122/examples/jsm/loaders/GLTFLoader.js';
 
 let socket = io();
 function log(msg) {
@@ -11,9 +13,11 @@ log("Libraries imported successfully");
 let session = null;
 let old = [];
 let models = [];
+let texLoader = new THREE.TextureLoader();
+let gltfLoader = new GLTFLoader();
 let firstTime = true;
 let scene = new THREE.Scene();
-scene.background = new THREE.Color(0x102030);
+scene.background = new THREE.Color(0x50B0F0);
 
 let player = new THREE.Group();
 player.position.set(0, 0, 2);
@@ -24,39 +28,51 @@ camera.lookAt(0, 1, -2);
 player.add(camera);
 scene.add(player);
 
-var light = new THREE.DirectionalLight(0xffffff, 1, 100);
+var light = new THREE.SpotLight(0xffffff, 3, 100);
+light.penumbra = 0.02;
+light.distance = 4;
+light.angle = 2;
 light.castShadow = true;
-light.position.set(2, 5, -2);
+light.position.set(0, 1.5, 0);
+light.target.position.set(0, 0, 0);
 scene.add(light);
-light.shadow.mapSize.width = 512; // default
-light.shadow.mapSize.height = 512; // default
-light.shadow.camera.near = 0.5; // default
-light.shadow.camera.far = 100; // default
+// light.shadow.bias = -0.002;
+// light.shadow.mapSize.width = 1024; // default
+// light.shadow.mapSize.height = 1024; // default=
+// light.shadow.camera.near = 0.5; // default
+// light.shadow.camera.far = 100; // default
 
-scene.add(new THREE.AmbientLight(0xffffff,0.2))
+scene.add(new THREE.AmbientLight(0xffffff, 0.2))
 
-let cube = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(1, 1, 1),
-    new THREE.MeshLambertMaterial({color: 0x0000ff})
-);
-cube.castShadow = true;
-cube.receiveShadow = true;
-scene.add(cube);
+// let cube = new THREE.Mesh(
+//     new THREE.BoxBufferGeometry(0.5, 0.5, 0.5),
+//     new THREE.MeshStandardMaterial({
+//         map: texLoader.load("./resources/squares/diff.jpg")
+//     })
+// );
+// cube.castShadow = true;
+// cube.receiveShadow = true;
+// scene.add(cube);
 
-let plane = new THREE.Mesh(
-    new THREE.PlaneBufferGeometry(8, 8),
-    new THREE.MeshLambertMaterial({color: 0x106040})
-);
-plane.rotation.set(-1.57, 0, 0);
-plane.receiveShadow = true;
-scene.add(plane);
+// let plane = new THREE.Mesh(
+//     new THREE.PlaneBufferGeometry(4, 4),
+//     new THREE.MeshStandardMaterial({
+//         map: texLoader.load("./resources/floor/diff.jpg")
+//     })
+// );
+// plane.castShadow = true;
+// plane.receiveShadow = true;
+// plane.rotation.set(-1.57, 0, 0);
+// scene.add(plane);
 
 let renderer = new THREE.WebGLRenderer({antialias: true});
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setAnimationLoop(render);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// renderer.shadowMap.enabled = true;
+// renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ReinhardToneMapping;
+renderer.toneMappingExposure = 2.5;
 
 document.body.appendChild(renderer.domElement);
 document.body.appendChild(VRButton.createButton(renderer));
@@ -64,6 +80,18 @@ renderer.xr.enabled = true;
 
 // const helper = new THREE.CameraHelper( light.shadow.camera );
 // scene.add( helper );
+
+gltfLoader.load( './resources/map.glb', gltf => {
+    gltf.scene.traverse(node => {
+        if (node.isMesh) {
+            //node.castShadow = true;
+            //node.receiveShadow = true;
+        }
+    });
+    scene.add(gltf.scene);
+}, undefined, function ( error ) {
+	console.error( error );
+});
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -73,11 +101,11 @@ window.addEventListener('resize', () => {
 
 function buildController(data) {
     let cube = new THREE.Mesh(
-        new THREE.CylinderBufferGeometry(0.05, 0.05, 0.2, 16),
+        new THREE.CylinderBufferGeometry(0.02, 0.02, 0.1, 12),
         new THREE.MeshLambertMaterial({color:(data.handedness=="left")? new THREE.Color(0xfca103): new THREE.Color(0x035efc)})
     );
-    cube.castShadow = true;
-    cube.receiveShadow = true;
+    // cube.castShadow = true;
+    // cube.receiveShadow = true;
     return cube;
 }
 
@@ -90,47 +118,18 @@ const AXE_TOUCHPAD_Y = 1;
 const AXE_THUMBSTICK_X = 2;
 const AXE_THUMBSTICK_Y = 3;
 
-function getBtnName(ev) {
-    switch (ev) {
-        case BUTTON_TRIGGER:
-            return "BUTTON_TRIGGER"
-        case BUTTON_SQUEEZE:
-            return "BUTTON_SQUEEZE"
-        case BUTTON_TOUCHPAD:
-            return "BUTTON_TOUCHPAD"
-        case BUTTON_THUMBSTICK:
-            return "BUTTON_THUMBSTICK"
-    }
-}
-function getAxeName(ev) {
-    switch (ev) {
-        case AXE_TOUCHPAD_X:
-            return "AXE_TOUCHPAD_X"
-        case AXE_TOUCHPAD_Y:
-            return "AXE_TOUCHPAD_Y"
-        case AXE_THUMBSTICK_X:
-            return "AXE_THUMBSTICK_X"
-        case AXE_THUMBSTICK_Y:
-            return "AXE_THUMBSTICK_Y"
-    }
-}
-
 function detectCollisions() {
     // cubeBounds.intersectsBox(otherBound);
     // cubeBounds.containsBox(otherBound);
     // cubeBounds.containsPoint(point);
     
-    let cubeBounds = new THREE.Box3().setFromObject(cube);
-    let groundBox = new THREE.Mesh(
-        new THREE.BoxBufferGeometry(2, 1, 2)
-    );
-    groundBox.position.set(0, -0.5, 0);
-    let groundBound = new THREE.Box3().setFromObject(groundBox);
-
-    let result = cubeBounds.intersectsBox(groundBound);
-    if (result)
-        cube.material = new THREE.MeshLambertMaterial({color:0xff0000})
-    else cube.material = new THREE.MeshLambertMaterial({color:0x0000ff})
+    // let cubeBounds = new THREE.Box3().setFromObject(cube);
+    // let groundBox = new THREE.Mesh(
+    //     new THREE.BoxBufferGeometry(2, 1, 2)
+    // );
+    // groundBox.position.set(0, -0.5, 0);
+    // let groundBound = new THREE.Box3().setFromObject(groundBox);
+    // let result = cubeBounds.intersectsBox(groundBound);
 }
 
 function handleController(now, old, dt) {
@@ -160,10 +159,15 @@ function render(time) {
     
     let dt = time - lastTime;
     lastTime = time;
-
-    cube.rotation.y = time * 0.002;
-    cube.rotation.x = time * 0.001;
-    cube.position.set(0, Math.cos(time * 0.0015)*0.5+1, 0);
+    log(1000/dt);
+    // cube.rotation.y = time * 0.001;
+    // cube.rotation.x = time * 0.0006;
+    if (!renderer.xr.isPresenting) {
+        camera.position.set(0, 1.5, -2)
+        camera.lookAt(Math.cos(time*0.0001), 1.2, Math.sin(time*0.0001))
+    }
+    
+    // cube.position.set(0, Math.cos(time * 0.0015)*0.2+0.5, -1.5);
 
     detectCollisions();
 
