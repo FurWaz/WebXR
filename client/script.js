@@ -19,8 +19,8 @@ let player = new THREE.Group();
 player.position.set(0, 0, 2);
 
 let camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 0, 0);
-camera.lookAt(0, 1, 0);
+camera.position.set(0, 2, 2);
+camera.lookAt(0, 1, -2);
 player.add(camera);
 scene.add(player);
 
@@ -37,7 +37,7 @@ scene.add(new THREE.AmbientLight(0xffffff,0.2))
 
 let cube = new THREE.Mesh(
     new THREE.BoxBufferGeometry(1, 1, 1),
-    new THREE.MeshLambertMaterial({color:'red'})
+    new THREE.MeshLambertMaterial({color: 0x0000ff})
 );
 cube.castShadow = true;
 cube.receiveShadow = true;
@@ -45,7 +45,7 @@ scene.add(cube);
 
 let plane = new THREE.Mesh(
     new THREE.PlaneBufferGeometry(8, 8),
-    new THREE.MeshLambertMaterial({color:new THREE.Color(0x106040)})
+    new THREE.MeshLambertMaterial({color: 0x106040})
 );
 plane.rotation.set(-1.57, 0, 0);
 plane.receiveShadow = true;
@@ -115,6 +115,24 @@ function getAxeName(ev) {
     }
 }
 
+function detectCollisions() {
+    // cubeBounds.intersectsBox(otherBound);
+    // cubeBounds.containsBox(otherBound);
+    // cubeBounds.containsPoint(point);
+    
+    let cubeBounds = new THREE.Box3().setFromObject(cube);
+    let groundBox = new THREE.Mesh(
+        new THREE.BoxBufferGeometry(2, 1, 2)
+    );
+    groundBox.position.set(0, -0.5, 0);
+    let groundBound = new THREE.Box3().setFromObject(groundBox);
+
+    let result = cubeBounds.intersectsBox(groundBound);
+    if (result)
+        cube.material = new THREE.MeshLambertMaterial({color:0xff0000})
+    else cube.material = new THREE.MeshLambertMaterial({color:0x0000ff})
+}
+
 function handleController(now, old, dt) {
     now.source.gamepad.hapticActuators[0].pulse(now.buttons[BUTTON_TRIGGER], 40);
     if (now.handedness == "left") {
@@ -147,6 +165,8 @@ function render(time) {
     cube.rotation.x = time * 0.001;
     cube.position.set(0, Math.cos(time * 0.0015)*0.5+1, 0);
 
+    detectCollisions();
+
     if (session != null) {
         let i = 0;
         for (const source of session.inputSources) {
@@ -177,4 +197,3 @@ function render(time) {
 
     renderer.render(scene, camera);
 }
-manageControllers(renderer);
