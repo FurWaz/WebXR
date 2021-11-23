@@ -7,7 +7,7 @@ export class Error {
 
     displayIfError() {
         if (this != Error.NO_ERROR)
-            log(this.msg);
+            log("Error: "+this.msg);
     }
 }
 

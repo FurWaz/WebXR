@@ -15,6 +15,16 @@ for (const source of session.inputSources) {
     player.add(models[i++]);
 }
 
+function buildController(data) {
+    let cube = new THREE.Mesh(
+        new THREE.CylinderBufferGeometry(0.02, 0.02, 0.1, 12),
+        new THREE.MeshLambertMaterial({color:(data.handedness=="left")? new THREE.Color(0xfca103): new THREE.Color(0x035efc)})
+    );
+    cube.castShadow = true;
+    cube.receiveShadow = true;
+    return cube;
+}
+
 function handleController(now, old, dt) {
     if (now.source.gamepad.hapticActuators)
         now.source.gamepad.hapticActuators[0].pulse(now.buttons[GAMEPAD.BUTTON_TRIGGER], 40);
