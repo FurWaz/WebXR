@@ -1,4 +1,4 @@
-import * as THREE from 'https://unpkg.com/three@0.126.0/build/three.module.js';
+import * as THREE from 'https://cdn.skypack.dev/three';
 import { Error, getScene, getXRSpace, getXRSession, setXRSpace, getXRFrame, log } from "./common.js";
 
 export const JOINT = {
@@ -52,6 +52,27 @@ export let boxMatLeft = new THREE.MeshBasicMaterial({color: 0x00ff00});
 export let boxMatRight = new THREE.MeshBasicMaterial({color: 0x00ff00});
 let boxes_left = []; let boxes_right = [];
 export let boxes = { left: boxes_left, right: boxes_right};
+let lastPos = {left: null, right: null}; // to detect if hands are moving for hand actions
+
+export let left = {
+    target: {
+        obj: null,
+        startPos: null,
+        startRot: null
+    },
+    startPos: null,
+    startRot: null
+}
+
+export let right = {
+    target: {
+        obj: null,
+        startPos: null,
+        startRot: null
+    },
+    startPos: null,
+    startRot: null
+}
 
 function addBox(x, y, z, box_list, offset, mat) {
     var geometry = new THREE.BoxBufferGeometry(1, 1, 1);
@@ -64,8 +85,25 @@ function addBox(x, y, z, box_list, offset, mat) {
     });
 }
 
-export function update(player) {
+let lastSaveTime = 0;
+export function update(player, time) {
     if (getXRSession() == null) return new Error("XRSession is null");
+
+    if (lastSaveTime + 300 < time) {
+        lastSaveTime = time;
+        let dataRight = {
+            position: boxes.right[jointIndex(JOINT.INDEX_FINGER_METACARPAL)].mesh.position.clone(),
+            rotation: boxes.right[jointIndex(JOINT.INDEX_FINGER_METACARPAL)].mesh.rotation.clone()
+        };
+        let dataLeft = {
+            position: boxes.left[jointIndex(JOINT.INDEX_FINGER_METACARPAL)].mesh.position.clone(),
+            rotation: boxes.left[jointIndex(JOINT.INDEX_FINGER_METACARPAL)].mesh.rotation.clone()
+        };
+        setTimeout(() => {
+            lastPos = {left: dataLeft, right: dataRight};
+        }, 300);
+    }
+
     for (let inputSource of getXRSession().inputSources) {
         if (!inputSource.hand) continue;
         let i = 0;
@@ -125,4 +163,60 @@ export function doesGrab(handedness = "right") {
     let dz = pos1.z - pos2.z;
     let dist = Math.sqrt( dx*dx + dy*dy + dz*dz );
     return dist < 0.02;
+}
+
+function deltaAngle(rot1, rot2) {
+    let ob1 = new THREE.Quaternion().setFromEuler(rot1);
+    let ob2 = new THREE.Quaternion().setFromEuler(rot2);
+    let delta = new THREE.Euler().setFromQuaternion(ob1.multiply(ob2.clone().invert()));
+    return Math.sqrt(delta.x*delta.x + delta.y*delta.y + delta.z*delta.z);
+}
+
+export function isMoving(handedness = "right") {
+    if (lastPos[handedness] == null) return true;
+    let mesh = boxes[handedness][jointIndex(JOINT.INDEX_FINGER_METACARPAL)].mesh;
+    let dmx = lastPos[handedness].position.x - mesh.position.x;
+    let dmy = lastPos[handedness].position.y - mesh.position.y;
+    let dmz = lastPos[handedness].position.z - mesh.position.z;
+    let deltaMove = Math.sqrt( dmx*dmx + dmy*dmy + dmz*dmz );
+
+    let drx = lastPos[handedness].position.x - mesh.position.x;
+    let dry = lastPos[handedness].position.y - mesh.position.y;
+    let drz = lastPos[handedness].position.z - mesh.position.z;
+    let deltaRot = Math.sqrt( drx*drx + dry*dry + drz*drz );
+    return deltaMove > 0.02 && deltaRot < 1;
+}
+
+export function doesPoint(handedness = "right") {
+    let fingerAngle = deltaAngle(
+        boxes[handedness][jointIndex(JOINT.INDEX_FINGER_PHALANX_INTERMEDIATE)].mesh.rotation,
+        boxes[handedness][jointIndex(JOINT.INDEX_FINGER_TIP)].mesh.rotation
+    );
+    let middleAngle = deltaAngle(
+        boxes[handedness][jointIndex(JOINT.MIDDLE_FINGER_PHALANX_INTERMEDIATE)].mesh.rotation,
+        boxes[handedness][jointIndex(JOINT.MIDDLE_FINGER_TIP)].mesh.rotation
+    );
+    let ringAngle = deltaAngle(
+        boxes[handedness][jointIndex(JOINT.RING_FINGER_PHALANX_INTERMEDIATE)].mesh.rotation,
+        boxes[handedness][jointIndex(JOINT.RING_FINGER_TIP)].mesh.rotation
+    );
+    
+    return fingerAngle < 0.3 && middleAngle > 0.7 && ringAngle > 0.7;
+}
+
+export function doesSpread(handedness = "right") {
+    let fingerAngle = deltaAngle(
+        boxes[handedness][jointIndex(JOINT.INDEX_FINGER_PHALANX_INTERMEDIATE)].mesh.rotation,
+        boxes[handedness][jointIndex(JOINT.INDEX_FINGER_TIP)].mesh.rotation
+    );
+    let middleAngle = deltaAngle(
+        boxes[handedness][jointIndex(JOINT.MIDDLE_FINGER_PHALANX_INTERMEDIATE)].mesh.rotation,
+        boxes[handedness][jointIndex(JOINT.MIDDLE_FINGER_TIP)].mesh.rotation
+    );
+    let ringAngle = deltaAngle(
+        boxes[handedness][jointIndex(JOINT.RING_FINGER_PHALANX_INTERMEDIATE)].mesh.rotation,
+        boxes[handedness][jointIndex(JOINT.RING_FINGER_TIP)].mesh.rotation
+    );
+    
+    return fingerAngle < 0.13 && middleAngle < 0.13 && ringAngle < 0.13;
 }

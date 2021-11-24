@@ -1,4 +1,4 @@
-import { GLTFLoader } from 'https://unpkg.com/three@0.126.0/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'https://cdn.skypack.dev/three/examples/jsm/loaders/GLTFLoader.js';
 
 let modelLoader = null;
 export function loadModel(url, castShadow, receiveShadow, scene) {
