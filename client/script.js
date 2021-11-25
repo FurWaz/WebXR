@@ -17,16 +17,16 @@ camera.lookAt(0, 1, -2);
 player.add(camera);
 getScene().add(player);
 
-const listener = new THREE.AudioListener();
-const sound = new THREE.Audio(listener);
-camera.add(listener);
-const audioLoader = new THREE.AudioLoader();
-audioLoader.load("./resources/background.ogg", buff => {
-    sound.setBuffer(buff);
-    sound.setLoop(true);
-    sound.setVolume(0.5);
-    sound.play();
-});
+// const listener = new THREE.AudioListener();
+// const sound = new THREE.Audio(listener);
+// camera.add(listener);
+// const audioLoader = new THREE.AudioLoader();
+// audioLoader.load("./resources/background.ogg", buff => {
+//     sound.setBuffer(buff);
+//     sound.setLoop(true);
+//     sound.setVolume(0.5);
+//     sound.play();
+// });
 
 getScene().add(new THREE.AmbientLight(0xffffff, 0.2))
 var light = new THREE.PointLight(0xffe5b5, 2, 100);
@@ -46,7 +46,7 @@ light2.shadow.bias = -0.00001;
 light2.shadow.mapSize.width = 256;
 light2.shadow.mapSize.height = 256;
 
-let renderer = new THREE.WebGLRenderer({antialias: false});
+let renderer = new THREE.WebGLRenderer({antialias: true});
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setAnimationLoop(render);
@@ -92,9 +92,11 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }, false);
 
-function minusPos(pos1, pos2) {
-    return {x: pos1.x-pos2.x, y: pos1.y-pos2.y, z: pos1.z-pos2.z};
-}
+let rayBox = new THREE.Mesh(
+    new THREE.BoxBufferGeometry(0.1, 0.1, 0.1),
+    new THREE.MeshBasicMaterial({color: 0x00FF00})
+);
+scene.add(rayBox);
 
 let firstTime = true;
 let lastTime = 0;
@@ -118,7 +120,7 @@ function render(time, frame) {
         
         if (!renderer.xr.isPresenting) {
             camera.position.set(2, 1.5, 0)
-            camera.lookAt(Math.cos(time*0.0005)*.2, 0.5, Math.sin(time*0.0005)*.1)
+            camera.lookAt(Math.cos(time*0.0005)*.2, 0.7, Math.sin(time*0.0005)*.1);
         }
 
         if (getXRSession() != null) {
@@ -175,6 +177,22 @@ function render(time, frame) {
                     actionTimeout = 1000;
                     let newPos = {x: player.position.x-Math.sin(camera.rotation.z), y: player.position.y, z: player.position.z-Math.cos(camera.rotation.z)};
                     player.position.set(newPos.x, newPos.y, newPos.z);
+                }
+                if (handedness == "right") {
+                    if (pointing) scene.add(rayBox);
+                    else scene.remove(rayBox);
+                    // raycasting ?
+                    let oldPos = fingerBox.position.clone();
+                    fingerBox.translateZ(-1);
+                    let newPos = fingerBox.position.clone();
+                    fingerBox.translateZ(1);
+                    let direction = newPos.sub(oldPos);
+                    const raycaster = new THREE.Raycaster(fingerBox.position.add(player.position), direction, 0.2, 5);
+                    let arr = raycaster.intersectObjects(getScene().children);
+                    let index = 0;
+                    while (index < arr.length && arr[index].object == rayBox) index++;
+                    let pos = arr[index].point;
+                    rayBox.position.set(pos.x, pos.y, pos.z);
                 }
             }
 

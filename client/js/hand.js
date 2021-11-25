@@ -165,6 +165,12 @@ export function doesGrab(handedness = "right") {
     return dist < 0.02;
 }
 
+export function getPointingObject(handedness = "right") {
+    const finger = boxes[handedness][jointIndex(JOINT.INDEX_FINGER_TIP)].mesh;
+    const raycaster = new THREE.Raycaster(finger.position, finger.rotation, 0.1, 5);
+    return raycaster.intersectObjects(getScene().children);
+}
+
 function deltaAngle(rot1, rot2) {
     let ob1 = new THREE.Quaternion().setFromEuler(rot1);
     let ob2 = new THREE.Quaternion().setFromEuler(rot2);
@@ -201,7 +207,7 @@ export function doesPoint(handedness = "right") {
         boxes[handedness][jointIndex(JOINT.RING_FINGER_TIP)].mesh.rotation
     );
     
-    return fingerAngle < 0.3 && middleAngle > 0.7 && ringAngle > 0.7;
+    return fingerAngle < 0.3 && middleAngle > 0.6 && ringAngle > 0.7;
 }
 
 export function doesSpread(handedness = "right") {
