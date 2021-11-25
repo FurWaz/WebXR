@@ -17,6 +17,17 @@ camera.lookAt(0, 1, -2);
 player.add(camera);
 getScene().add(player);
 
+const listener = new THREE.AudioListener();
+const sound = new THREE.Audio(listener);
+camera.add(listener);
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load("./resources/background.ogg", buff => {
+    sound.setBuffer(buff);
+    sound.setLoop(true);
+    sound.setVolume(0.5);
+    sound.play();
+});
+
 getScene().add(new THREE.AmbientLight(0xffffff, 0.2))
 var light = new THREE.PointLight(0xffe5b5, 2, 100);
 light.distance = 4;
