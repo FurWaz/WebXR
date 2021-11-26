@@ -1,5 +1,6 @@
 import * as THREE from 'https://cdn.skypack.dev/three';
 import { VRButton } from 'https://cdn.skypack.dev/three/examples/jsm/webxr/VRButton.js';
+
 import { log, getXRSession, getScene, setScene, setXRFrame, setXRSession, setXRSpace } from './js/common.js';
 import { getModelMaterials, loadModel } from './js/load.js';
 import * as XRHands from './js/hand.js';
@@ -17,40 +18,22 @@ camera.lookAt(0, 1, -2);
 player.add(camera);
 getScene().add(player);
 
-// const listener = new THREE.AudioListener();
-// const sound = new THREE.Audio(listener);
-// camera.add(listener);
-// const audioLoader = new THREE.AudioLoader();
-// audioLoader.load("./resources/background.ogg", buff => {
-//     sound.setBuffer(buff);
-//     sound.setLoop(true);
-//     sound.setVolume(0.5);
-//     sound.play();
-// });
-
-getScene().add(new THREE.AmbientLight(0xffffff, 0.2))
-var light = new THREE.PointLight(0xffe5b5, 2, 100);
-light.distance = 4;
-light.castShadow = true;
-light.position.set(0, 2.8, 0);
-light.shadow.bias = -0.001;
-light.shadow.mapSize.width = 256;
-light.shadow.mapSize.height = 256;
-getScene().add(light);
-
-var light2 = new THREE.PointLight(0xffefbf, 2, 100);
-light2.distance = 2;
-light2.castShadow = true;
-light2.position.set(0, 0.42, 0);
-light2.shadow.bias = -0.00001;
-light2.shadow.mapSize.width = 256;
-light2.shadow.mapSize.height = 256;
+const listener = new THREE.AudioListener();
+const sound = new THREE.Audio(listener);
+camera.add(listener);
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load("./resources/background.ogg", buff => {
+    sound.setBuffer(buff);
+    sound.setLoop(true);
+    sound.setVolume(0.5);
+    sound.play();
+});
 
 let renderer = new THREE.WebGLRenderer({antialias: true});
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setAnimationLoop(render);
-renderer.shadowMap.enabled = false;
+renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ReinhardToneMapping;
 renderer.toneMappingExposure = 2.5;
@@ -59,18 +42,33 @@ document.body.appendChild(renderer.domElement);
 document.body.appendChild(VRButton.createButton(renderer));
 renderer.xr.enabled = true;
 
+getScene().add(new THREE.AmbientLight(0xffffff, 0.2))
+var light = new THREE.PointLight(0xffe5b5, 2, 100);
+light.distance = 4;
+light.castShadow = true;
+light.position.set(0, 2.8, 0);
+light.shadow.bias = -0.01;
+light.shadow.mapSize.width = 256;
+light.shadow.mapSize.height = 256;
+getScene().add(light);
+
+var light2 = new THREE.PointLight(0xffefbf, 2, 100);
+light2.distance = 2;
+light2.position.set(0, 0.42, 0);
+
 let colliders = [];
 let colorModified = [];
 let scene = getScene();
 loadModel('./resources/map.glb', false, true, scene);
 loadModel('./resources/logo.glb', false, true, scene);
-loadModel('./resources/books.glb', false, true, scene);
+loadModel('./resources/books.glb', true, true, scene);
 loadModel('./resources/shelf.glb', true, true, scene);
 loadModel('./resources/fox.glb', true, true, scene).then(model => {
     model.scene.position.set(-1.1, 1.07, 1.75);
     colliders.push(model.scene);
 });
 loadModel('./resources/seat.glb', true, true, scene).then(model => {
+    model.scene.position.set(-2.12, 0, -1.3);
     let m = getModelMaterials(model)[1];
     m.color = new THREE.Color(0x424B63);
     colorModified.push({obj: model.scene, mat: m});
@@ -83,6 +81,7 @@ loadModel('./resources/carpet.glb', false, true, scene).then(model => {
 loadModel('./resources/lamp.glb', true, true, scene).then(model => {
     model.scene.position.set(-1.67, 1.1, 1.76);
     model.scene.add(light2);
+    getModelMaterials(model)[1].side = THREE.DoubleSide;
     colliders.push(model.scene);
 });
 
@@ -99,13 +98,18 @@ let rayBox = new THREE.Mesh(
 scene.add(rayBox);
 
 let firstTime = true;
-let lastTime = 0;
+let lastTime = 0, logTime = 0;
 let actionTimeout = 500;
+let lastStates = [false, false]
 function render(time, frame) {
     setXRFrame(frame);
     try {
         let dt = time - lastTime;
         lastTime = time;
+
+        if (logTime + 1000 < time) {
+            logTime = time;
+        }
 
         if (firstTime && renderer.xr.isPresenting) {
             firstTime = false;
@@ -124,11 +128,6 @@ function render(time, frame) {
         }
 
         if (getXRSession() != null) {
-            if (actionTimeout > 0) {
-                actionTimeout -= dt;
-                if (actionTimeout < 0) actionTimeout = 0;
-            }
-
             XRHands.update(player, time).displayIfError();
             for (const handedness of ["left", "right"]) {
                 const grabbing = XRHands.doesGrab(handedness);
@@ -141,6 +140,15 @@ function render(time, frame) {
                 if (grabbing) fingerBox.material.color = new THREE.Color(0xff0000);
                 if (spreading) fingerBox.material.color = new THREE.Color(0x0000ff);
                 if (pointing) fingerBox.material.color = new THREE.Color(0x00ff00);
+
+                if (lastStates[0] != pointing || lastStates[1] != spreading)
+                    actionTimeout = 500;
+                if (actionTimeout > 0)
+                    actionTimeout -= dt;
+                lastStates[0] = pointing;
+                lastStates[1] = spreading;
+
+                // resease object in hand
                 if (!grabbing) {
                     XRHands[handedness].target.obj = null;
                     XRHands[handedness].target.startPos = null;
@@ -174,29 +182,48 @@ function render(time, frame) {
 
                 // basic teleportation (if hand in right position, teleport 1m forward)
                 if (spreading && !moving && actionTimeout <= 0 && handedness == "right") {
-                    actionTimeout = 1000;
                     let newPos = {x: player.position.x-Math.sin(camera.rotation.z), y: player.position.y, z: player.position.z-Math.cos(camera.rotation.z)};
                     player.position.set(newPos.x, newPos.y, newPos.z);
                 }
-                if (handedness == "right") {
-                    if (pointing) scene.add(rayBox);
-                    else scene.remove(rayBox);
+                scene.remove(rayBox);
+                if (handedness == "right" && pointing) {
+                    scene.add(rayBox);
                     // raycasting ?
-                    let oldPos = fingerBox.position.clone();
+                    const oldPos = fingerBox.position.clone();
                     fingerBox.translateZ(-1);
-                    let newPos = fingerBox.position.clone();
+                    const newPos = fingerBox.position.clone();
                     fingerBox.translateZ(1);
-                    let direction = newPos.sub(oldPos);
+                    const direction = newPos.sub(oldPos);
                     const raycaster = new THREE.Raycaster(fingerBox.position.add(player.position), direction, 0.2, 5);
-                    let arr = raycaster.intersectObjects(getScene().children);
+                    const arr = raycaster.intersectObjects(getScene().children);
                     let index = 0;
-                    while (index < arr.length && arr[index].object == rayBox) index++;
-                    let pos = arr[index].point;
-                    rayBox.position.set(pos.x, pos.y, pos.z);
+                    let colModObj = null;
+                    let valid = false;
+                    while (!valid) {
+                        if (index >= arr.length) break;
+                        const object = arr[index].object;
+                        if (object == rayBox) continue;
+                        valid = false;
+                        for (const ob of colorModified)
+                            if (object == ob.obj) {
+                                valid = true;
+                                colModObj = ob;
+                                break;
+                            }
+                        index++;
+                    }
+                    if (arr[index]) {
+                        let pos = arr[index].point;
+                        rayBox.position.set(pos.x, pos.y, pos.z);
+                        if (actionTimeout <= 0) { // if not moving, validate object selection
+                            XRHands.objectSelected = colModObj.obj;
+                            colModObj.mat.color = new THREE.Color(0xff0000);
+                        }
+                    }
                 }
             }
 
         }
-    } catch(err) {log("Error : "+err);}
+    } catch(err) {}
     renderer.render(scene, camera);
 }

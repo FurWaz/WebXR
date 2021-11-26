@@ -32,7 +32,6 @@ export function jointIndex(j) {
     let i = 0;
     for (const finger of orderedJoints) {
         for (const joint of finger) {
-            console.log(joint+" vs "+j);
             if (joint == j) return i;
             i++;
         }
@@ -54,6 +53,7 @@ let boxes_left = []; let boxes_right = [];
 export let boxes = { left: boxes_left, right: boxes_right};
 let lastPos = {left: null, right: null}; // to detect if hands are moving for hand actions
 
+export let objectSelected = null;
 export let left = {
     target: {
         obj: null,

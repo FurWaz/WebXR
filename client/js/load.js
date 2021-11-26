@@ -1,4 +1,5 @@
 import { GLTFLoader } from 'https://cdn.skypack.dev/three/examples/jsm/loaders/GLTFLoader.js';
+import * as THREE from 'https://cdn.skypack.dev/three';
 
 let modelLoader = null;
 export function loadModel(url, castShadow, receiveShadow, scene) {
@@ -14,8 +15,16 @@ export function loadModel(url, castShadow, receiveShadow, scene) {
                 node.castShadow = castShadow;
                 node.receiveShadow = receiveShadow;
             }
+            if (node.material) {
+                let color = (node.material.color)? node.material.color: null;
+                let rough = (node.material.roughnessMap)? node.material.roughnessMap: null;
+                let diff = (node.material.map)? node.material.map: null;
+                let normal = (node.material.normalMap)? node.material.normalMap: null;
+                node.material = new THREE.MeshPhongMaterial({map: diff, color: color});
+            }
         });
         scene.add(gltf.scene);
+        let mats = getMaterials(gltf);
         callResolve(gltf);
     }, undefined, (err) => {
         callReject(err);
