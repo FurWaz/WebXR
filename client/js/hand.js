@@ -1,4 +1,5 @@
 import * as THREE from 'https://cdn.skypack.dev/three';
+import * as ModifPanel from "./modifPanel.js";
 import { Error, getScene, getXRSpace, getXRSession, setXRSpace, getXRFrame, log } from "./common.js";
 
 export const JOINT = {
@@ -54,6 +55,9 @@ export let boxes = { left: boxes_left, right: boxes_right};
 let lastPos = {left: null, right: null}; // to detect if hands are moving for hand actions
 
 export let objectSelected = null;
+export function setObjectSelected(obj) {
+    objectSelected = obj;
+}
 export let left = {
     target: {
         obj: null,
@@ -61,7 +65,8 @@ export let left = {
         startRot: null
     },
     startPos: null,
-    startRot: null
+    startRot: null,
+    visible: false
 }
 
 export let right = {
@@ -71,7 +76,8 @@ export let right = {
         startRot: null
     },
     startPos: null,
-    startRot: null
+    startRot: null,
+    visible: false
 }
 
 function addBox(x, y, z, box_list, offset, mat) {
@@ -115,6 +121,8 @@ export function update(player, time) {
                 if (inputSource.hand[box.offset] !== null) {
                     jointPose = getXRFrame().getJointPose(inputSource.hand.get(joint), getXRSpace());
                 }
+                if (inputSource.handedness == "left") left.visible = jointPose != null;
+                else right.visible = jointPose != null;
                 if (jointPose != null) {
                     player.add(box.mesh);
                     box.mesh.position.set(jointPose.transform.position.x, jointPose.transform.position.y, jointPose.transform.position.z);

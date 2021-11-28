@@ -1,10 +1,10 @@
 import * as THREE from 'https://cdn.skypack.dev/three';
 import { VRButton } from 'https://cdn.skypack.dev/three/examples/jsm/webxr/VRButton.js';
-
 import { log, getXRSession, getScene, setScene, setXRFrame, setXRSession, setXRSpace } from './js/common.js';
 import { getModelMaterials, loadModel } from './js/load.js';
 import * as XRHands from './js/hand.js';
 import * as collision from './js/collision.js';
+import * as ModifPanel from "./js/modifPanel.js";
 
 setScene(new THREE.Scene());
 getScene().background = new THREE.Color(0x051015);
@@ -13,8 +13,8 @@ let player = new THREE.Group();
 player.position.set(0, 0, 0);
 
 let camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 2, 0);
-camera.lookAt(0, 1, -2);
+camera.position.set(0, 1, 1);
+camera.lookAt(0, 1, 0);
 player.add(camera);
 getScene().add(player);
 
@@ -57,9 +57,14 @@ light2.distance = 2;
 light2.position.set(0, 0.42, 0);
 
 let colliders = [];
-let colorModified = [];
+let matModifiable = [];
 let scene = getScene();
-loadModel('./resources/map.glb', false, true, scene);
+
+loadModel('./resources/map.glb', false, true, scene).then((model => {
+    const raycaster = new THREE.Raycaster(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0), 0.2, 5);
+    const arr = raycaster.intersectObjects(getScene().children);
+    console.log(arr);
+}));
 loadModel('./resources/logo.glb', false, true, scene);
 loadModel('./resources/books.glb', true, true, scene);
 loadModel('./resources/shelf.glb', true, true, scene);
@@ -71,12 +76,12 @@ loadModel('./resources/seat.glb', true, true, scene).then(model => {
     model.scene.position.set(-2.12, 0, -1.3);
     let m = getModelMaterials(model)[1];
     m.color = new THREE.Color(0x424B63);
-    colorModified.push({obj: model.scene, mat: m});
+    matModifiable.push({mesh: model.scene, mat: m});
 });
 loadModel('./resources/carpet.glb', false, true, scene).then(model => {
     let m = getModelMaterials(model)[0];
     m.color = new THREE.Color(0x424B63);
-    colorModified.push({obj: model.scene, mat: m});
+    matModifiable.push({mesh: model.scene, mat: m});
 });
 loadModel('./resources/lamp.glb', true, true, scene).then(model => {
     model.scene.position.set(-1.67, 1.1, 1.76);
@@ -92,21 +97,25 @@ window.addEventListener('resize', () => {
 }, false);
 
 let rayBox = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(0.1, 0.1, 0.1),
-    new THREE.MeshBasicMaterial({color: 0x00FF00})
+    new THREE.SphereBufferGeometry(0.01),
+    new THREE.MeshBasicMaterial({color: 0xffffff})
 );
 scene.add(rayBox);
 
+try {
+    ModifPanel.init();
+    ModifPanel.hideMenu();
+} catch (err) {log("Error runtime: "+err)}
+
 let firstTime = true;
 let lastTime = 0, logTime = 0;
-let actionTimeout = 500;
-let lastStates = [false, false]
+let spreadTimeout = 500;
+let pointTimeout = 500;
 function render(time, frame) {
     setXRFrame(frame);
     try {
         let dt = time - lastTime;
         lastTime = time;
-
         if (logTime + 1000 < time) {
             logTime = time;
         }
@@ -123,8 +132,8 @@ function render(time, frame) {
         }
         
         if (!renderer.xr.isPresenting) {
-            camera.position.set(2, 1.5, 0)
-            camera.lookAt(Math.cos(time*0.0005)*.2, 0.7, Math.sin(time*0.0005)*.1);
+            camera.position.set(1, 1.5, 0)
+            camera.lookAt(Math.cos(time*0.0005)*.2, 1.2, Math.sin(time*0.0005)*.1);
         }
 
         if (getXRSession() != null) {
@@ -139,16 +148,11 @@ function render(time, frame) {
                 fingerBox.material.color = new THREE.Color(0xffffff);
                 if (grabbing) fingerBox.material.color = new THREE.Color(0xff0000);
                 if (spreading) fingerBox.material.color = new THREE.Color(0x0000ff);
+                else spreadTimeout = 500;
                 if (pointing) fingerBox.material.color = new THREE.Color(0x00ff00);
+                //else pointTimeout = 500;
 
-                if (lastStates[0] != pointing || lastStates[1] != spreading)
-                    actionTimeout = 500;
-                if (actionTimeout > 0)
-                    actionTimeout -= dt;
-                lastStates[0] = pointing;
-                lastStates[1] = spreading;
-
-                // resease object in hand
+                // release object in hand
                 if (!grabbing) {
                     XRHands[handedness].target.obj = null;
                     XRHands[handedness].target.startPos = null;
@@ -181,14 +185,17 @@ function render(time, frame) {
                 }
 
                 // basic teleportation (if hand in right position, teleport 1m forward)
-                if (spreading && !moving && actionTimeout <= 0 && handedness == "right") {
-                    let newPos = {x: player.position.x-Math.sin(camera.rotation.z), y: player.position.y, z: player.position.z-Math.cos(camera.rotation.z)};
-                    player.position.set(newPos.x, newPos.y, newPos.z);
+                if (spreading && !moving && spreadTimeout <= 0 && handedness == "right") {
+                    if (spreadTimeout > 0) spreadTimeout -= dt
+                    else {
+                        spreadTimeout += 500;
+                        let newPos = {x: player.position.x-Math.sin(camera.rotation.z), y: player.position.y, z: player.position.z-Math.cos(camera.rotation.z)};
+                        player.position.set(newPos.x, newPos.y, newPos.z);
+                    }
                 }
                 scene.remove(rayBox);
                 if (handedness == "right" && pointing) {
                     scene.add(rayBox);
-                    // raycasting ?
                     const oldPos = fingerBox.position.clone();
                     fingerBox.translateZ(-1);
                     const newPos = fingerBox.position.clone();
@@ -196,34 +203,45 @@ function render(time, frame) {
                     const direction = newPos.sub(oldPos);
                     const raycaster = new THREE.Raycaster(fingerBox.position.add(player.position), direction, 0.2, 5);
                     const arr = raycaster.intersectObjects(getScene().children);
-                    let index = 0;
-                    let colModObj = null;
-                    let valid = false;
-                    while (!valid) {
-                        if (index >= arr.length) break;
-                        const object = arr[index].object;
-                        if (object == rayBox) continue;
-                        valid = false;
-                        for (const ob of colorModified)
-                            if (object == ob.obj) {
-                                valid = true;
-                                colModObj = ob;
-                                break;
+                    if (arr.length > 0) {
+                        let i = 0;
+                        let obji = 0;
+                        let found = null;
+                        while (!found) {
+                            if (i == arr.length) break;
+                            const obj = arr[i].object;
+                            i++;
+                            if (obj == rayBox) continue;
+                            obji = i-1;
+                            for (const matmod of matModifiable) {
+                                let matches = false;
+                                matmod.mesh.traverse(node => {
+                                    if (node.isMesh && node == obj)
+                                        matches = true;
+                                })
+                                if (matches) {
+                                    found = matmod;
+                                    break;
+                                }
                             }
-                        index++;
-                    }
-                    if (arr[index]) {
-                        let pos = arr[index].point;
+                        }
+                        let pos = arr[obji].point;
                         rayBox.position.set(pos.x, pos.y, pos.z);
-                        if (actionTimeout <= 0) { // if not moving, validate object selection
-                            XRHands.objectSelected = colModObj.obj;
-                            colModObj.mat.color = new THREE.Color(0xff0000);
+                        rayBox.material.color = new THREE.Color(0xffffff);
+                        if (found != null) {
+                            rayBox.material.color = new THREE.Color(0x00ff00+pointTimeout);
+                            pointTimeout -= dt;
+                        }
+                        if (pointTimeout <= 0 && found != null) {
+                            ModifPanel.showMenu();
+                            XRHands.setObjectSelected(found);
+                            pointTimeout = 500;
                         }
                     }
                 }
             }
-
+            ModifPanel.update(dt);
         }
-    } catch(err) {}
+    } catch(err) {log("Error: "+err)}
     renderer.render(scene, camera);
 }
