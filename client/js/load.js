@@ -17,9 +17,7 @@ export function loadModel(url, castShadow, receiveShadow, scene) {
             }
             if (node.material) {
                 let color = (node.material.color)? node.material.color: null;
-                let rough = (node.material.roughnessMap)? node.material.roughnessMap: null;
                 let diff = (node.material.map)? node.material.map: null;
-                let normal = (node.material.normalMap)? node.material.normalMap: null;
                 node.material = new THREE.MeshPhongMaterial({map: diff, color: color});
             }
         });

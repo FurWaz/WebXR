@@ -1,6 +1,5 @@
 import * as THREE from 'https://cdn.skypack.dev/three';
-import * as ModifPanel from "./modifPanel.js";
-import { Error, getScene, getXRSpace, getXRSession, setXRSpace, getXRFrame, log } from "./common.js";
+import { Error, getScene, getXRSpace, getXRSession, getXRFrame, getPlayer, log, setInput, getInput } from "./common.js";
 
 export const JOINT = {
     THUMB_METACARPAL: "thumb-metacarpal",
@@ -92,8 +91,11 @@ function addBox(x, y, z, box_list, offset, mat) {
 }
 
 let lastSaveTime = 0;
-export function update(player, time) {
-    if (getXRSession() == null) return new Error("XRSession is null");
+export function update(time) {
+    let session = getXRSession();
+    let space = getXRSpace();
+    let player = getPlayer();
+    if (session == null) return new Error("XRSession is null");
 
     if (lastSaveTime + 300 < time) {
         lastSaveTime = time;
@@ -109,17 +111,19 @@ export function update(player, time) {
             lastPos = {left: dataLeft, right: dataRight};
         }, 300);
     }
-
-    for (let inputSource of getXRSession().inputSources) {
+    if (space == null) return new Error("no xrspace defined");
+    setInput("controllers");
+    if (session.inputSources == null) return new Error("no input source");
+    for (let inputSource of session.inputSources) {
         if (!inputSource.hand) continue;
+        setInput("hands");
         let i = 0;
-        if (getXRSpace() == null) return new Error("no xrspace defined");
         for (const finger of orderedJoints) {
             for (const joint of finger) {
                 let box = boxes[inputSource.handedness][i];
                 let jointPose = null;
                 if (inputSource.hand[box.offset] !== null) {
-                    jointPose = getXRFrame().getJointPose(inputSource.hand.get(joint), getXRSpace());
+                    jointPose = getXRFrame().getJointPose(inputSource.hand.get(joint), space);
                 }
                 if (inputSource.handedness == "left") left.visible = jointPose != null;
                 else right.visible = jointPose != null;
@@ -135,6 +139,13 @@ export function update(player, time) {
                 i++;
             }
         }
+    }
+
+    if (getInput() != "hands") {
+        for (const box of boxes.left)
+            player.remove(box);
+        for (const box of boxes.right)
+            player.remove(box);
     }
     return Error.NO_ERROR;
 }

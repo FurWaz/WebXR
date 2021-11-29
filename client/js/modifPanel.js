@@ -1,7 +1,7 @@
 import * as THREE from 'https://cdn.skypack.dev/three';
 import { FontLoader } from 'https://cdn.skypack.dev/three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'https://cdn.skypack.dev/three/examples/jsm/geometries/TextGeometry.js';
-import { getScene, log } from './common.js';
+import { getPlayer, log } from './common.js';
 import * as XRHands from './hand.js';
 
 const FONT_URL = "https://cdn.skypack.dev/three/examples/fonts/helvetiker_regular.typeface.json";
@@ -21,7 +21,7 @@ export function init() {
         new THREE.BoxBufferGeometry(0.002, 0.3, 0.3),
         new THREE.MeshLambertMaterial({color: 0xffffff, opacity: 0.2, transparent: true})
     ));
-    getScene().add(panelGroup);
+    getPlayer().add(panelGroup);
     loader.load(FONT_URL, font => {
         fontParams.font = font;
         const textGeometry = new TextGeometry("Selectionnez une couleur:", fontParams)
@@ -57,7 +57,7 @@ export function init() {
             hideMenu();
             if (XRHands.objectSelected == null) return;
             if (XRHands.objectSelected.mat) {
-                XRHands.objectSelected.mat.color = col;
+                XRHands.objectSelected.mat.color = color;
             }
         }});
         shift += blockSize;
@@ -66,12 +66,12 @@ export function init() {
 
 export function showMenu() {
     isOpen = true;
-    getScene().add(panelGroup);
+    getPlayer().add(panelGroup);
 }
 
 export function hideMenu() {
     isOpen = false;
-    getScene().remove(panelGroup);
+    getPlayer().remove(panelGroup);
 }
 
 export function update(dt) {
