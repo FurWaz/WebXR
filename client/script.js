@@ -271,6 +271,7 @@ function render(time, frame) {
                     const model = Controllers.controllers[handedness].model;
                     const grabbing = Controllers.isGrabbing(ctrl);
                     const pointing = Controllers.isPointing(ctrl);
+                    const pressing = Controllers.isPressing(ctrl);
                     if (model == null) continue;
 
                     // release object in hand
@@ -304,8 +305,63 @@ function render(time, frame) {
                         let newRot = deltaRot.multiply(ctrl.target.startRot);
                         ctrl.target.obj.quaternion.copy(newRot);
                     }
+
+                    if (handedness != "right") continue; // only for right controller
+                    
+                    if (pressing) {
+                        Controllers.controllers.right.target = rayBox;
+                        const oldPos = model.position.clone();
+                        model.translateZ(-1);
+                        const newPos = model.position.clone();
+                        model.translateZ(1);
+                        const direction = newPos.sub(oldPos);
+                        const raycaster = new THREE.Raycaster(model.position.add(player.position), direction, 0.2, 5);
+                        const arr = raycaster.intersectObjects(getScene().children);
+                        if (arr.length > 0) {
+                            let i = 0;
+                            let obji = 0;
+                            let found = null;
+                            while (!found) {
+                                if (i == arr.length) break;
+                                const obj = arr[i].object;
+                                i++;
+                                if (obj == rayBox) continue;
+                                obji = i-1;
+                                for (const matmod of matModifiable) {
+                                    let matches = false;
+                                    matmod.mesh.traverse(node => {
+                                        if (node.isMesh && node == obj)
+                                            matches = true;
+                                    })
+                                    if (matches) {
+                                        found = matmod;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (arr[obji]) {
+                                let pos = arr[obji].point;
+                                rayBox.position.set(pos.x, pos.y, pos.z);
+                            }
+                            if (pointing) {
+                                if (found != null) {
+                                    pointTimeout -= dt;
+                                    playTick();
+                                } else {
+                                    pointTimeout = 1000;
+                                    stopTick();
+                                }
+                                if (pointTimeout <= 0 && found != null) {
+                                    ModifPanel.showMenu();
+                                    Controllers.vibrate(Controllers.right, 0.5, 50);
+                                    XRHands.setObjectSelected(found);
+                                    stopTick();
+                                    pointTimeout = 1000;
+                                }
+                            }
+                        }
+                    } else Controllers.controllers.right.target = null;
                 }
-            
         }
     } catch(err) {log("Error: "+err)}
     renderer.render(scene, camera);

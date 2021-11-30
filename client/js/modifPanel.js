@@ -1,8 +1,9 @@
 import * as THREE from 'https://cdn.skypack.dev/three';
 import { FontLoader } from 'https://cdn.skypack.dev/three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'https://cdn.skypack.dev/three/examples/jsm/geometries/TextGeometry.js';
-import { getPlayer, log } from './common.js';
+import { getInput, getPlayer, log } from './common.js';
 import * as XRHands from './hand.js';
+import * as Controllers from './controllers.js';
 
 const FONT_URL = "https://cdn.skypack.dev/three/examples/fonts/helvetiker_regular.typeface.json";
 
@@ -19,7 +20,7 @@ export function init() {
     panelGroup = new THREE.Group();
     panelGroup.add(new THREE.Mesh(
         new THREE.BoxBufferGeometry(0.002, 0.3, 0.3),
-        new THREE.MeshLambertMaterial({color: 0xffffff, opacity: 0.2, transparent: true})
+        new THREE.MeshBasicMaterial({color: 0xffffff, opacity: 0.2, transparent: true})
     ));
     getPlayer().add(panelGroup);
     loader.load(FONT_URL, font => {
@@ -76,7 +77,9 @@ export function hideMenu() {
 
 export function update(dt) {
     try {
-    let refBox = XRHands.boxes.left[XRHands.jointIndex(XRHands.JOINT.INDEX_FINGER_PHALANX_PROXIMAL)].mesh;
+    let refBox = (getInput() == "hands")?
+        XRHands.boxes.left[XRHands.jointIndex(XRHands.JOINT.INDEX_FINGER_PHALANX_PROXIMAL)].mesh:
+        Controllers.controllers.left.model;
     refBox.translateY(0.2);
     let newPos = {
         x: (refBox.position.x - panelGroup.position.x) * (dt/100),
@@ -105,14 +108,28 @@ export function update(dt) {
 
     //check for button collision with finger
     if (isOpen) {
-        let finger = XRHands.boxes.right[XRHands.jointIndex(XRHands.JOINT.INDEX_FINGER_TIP)].mesh;
-        let bounds = new THREE.Box3().setFromObject(finger);
-        for (const btn of panelButtons) {
-            let btnBounds = new THREE.Box3().setFromObject(btn.mesh);
-            let res = btnBounds.intersectsBox(bounds);
-            if (res) {
-                btn.callback();
-                break;
+        if (getInput() == "hands") {
+            let finger = XRHands.boxes.right[XRHands.jointIndex(XRHands.JOINT.INDEX_FINGER_TIP)].mesh;
+            let bounds = new THREE.Box3().setFromObject(finger);
+            for (const btn of panelButtons) {
+                let btnBounds = new THREE.Box3().setFromObject(btn.mesh);
+                let res = btnBounds.intersectsBox(bounds);
+                if (res) {
+                    btn.callback();
+                    break;
+                }
+            }
+        } else {
+            if (Controllers.controllers.right.target == null || !Controllers.isPointing(Controllers.right)) return;
+            let bounds = new THREE.Box3().setFromObject(Controllers.controllers.right.target);
+            for (const btn of panelButtons) {
+                let btnBounds = new THREE.Box3().setFromObject(btn.mesh);
+                let res = btnBounds.intersectsBox(bounds);
+                if (res) {
+                    btn.callback();
+                    Controllers.vibrate(Controllers.right, 1, 45);
+                    break;
+                }
             }
         }
     }

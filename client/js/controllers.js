@@ -14,8 +14,8 @@ const GAMEPAD = {
 };
 
 export let controllers = {
-    left: {model: null, visible: false},
-    right: {model: null, visible: false}
+    left: {model: null, visible: false, target: null},
+    right: {model: null, visible: false, target: null}
 }
 
 export function isGrabbing(ctrl) {
@@ -24,6 +24,11 @@ export function isGrabbing(ctrl) {
 }
 
 export function isPointing (ctrl) {
+    if (ctrl.state == null) return false;
+    return ctrl.state.buttons[GAMEPAD.BUTTON_TRIGGER] > 0;
+}
+
+export function isPressing (ctrl) {
     if (ctrl.state == null) return false;
     return ctrl.state.buttons[GAMEPAD.BUTTON_TRIGGER] > 0.75;
 }
@@ -64,7 +69,7 @@ export function init() {
         if (!source.gamepad) continue;
         loadModel("./resources/quest_"+source.handedness+".glb", true, true, getScene()).then(m => {
             m.scene.traverse(n => {
-                if (n.material) n.material = new THREE.MeshPhongMaterial({color: n.material.color.clone()});
+                if (n.material) n.material = new THREE.MeshBasicMaterial({color: n.material.color.clone()});
             });
             controllers[source.handedness] = {
                 model: m.scene,
@@ -79,16 +84,14 @@ function handleController(now, dt) {
     let camera = getCamera();
     let player = getPlayer();
     (now.handedness == "right")? right.state = now: left.state = now;
-    if (now.source.gamepad.hapticActuators)
-        now.source.gamepad.hapticActuators[0].pulse(now.buttons[GAMEPAD.BUTTON_TRIGGER], 40);
     if (now.handedness == "left") {
         let newPos = new THREE.Vector3(player.position.x, player.position.y, player.position.z);
         let mx =  Math.cos(camera.rotation.z)*now.axes[GAMEPAD.AXE_THUMBSTICK_X] 
                  +Math.sin(camera.rotation.z)*now.axes[GAMEPAD.AXE_THUMBSTICK_Y];
         let my = -Math.sin(camera.rotation.z)*now.axes[GAMEPAD.AXE_THUMBSTICK_X] 
                  +Math.cos(camera.rotation.z)*now.axes[GAMEPAD.AXE_THUMBSTICK_Y];
-        newPos.x += mx * dt * 0.002;
-        newPos.z += my * dt * 0.002;
+        newPos.x += mx * dt * 0.001;
+        newPos.z += my * dt * 0.001;
         player.position.copy(newPos);
     }
 }
