@@ -112,7 +112,7 @@ window.addEventListener('resize', () => {
 }, false);
 
 let rayBox = new THREE.Mesh(
-    new THREE.SphereBufferGeometry(0.01),
+    new THREE.SphereBufferGeometry(0.005),
     new THREE.MeshBasicMaterial({color: 0xffffff})
 );
 scene.add(rayBox);
@@ -265,18 +265,18 @@ function render(time, frame) {
                 }
 
             // controllers
-            else
+            else {
+                getScene().add(rayBox);
                 for (const handedness of ["left", "right"]) {
                     const ctrl = Controllers[handedness];
                     const model = Controllers.controllers[handedness].model;
                     const grabbing = Controllers.isGrabbing(ctrl);
-                    const pointing = Controllers.isPointing(ctrl);
                     const pressing = Controllers.isPressing(ctrl);
                     if (model == null) continue;
 
                     // release object in hand
                     if (!grabbing && ctrl.target.obj != null) {
-                        Controllers.vibrate(ctrl, 0.5, 50);
+                        Controllers.vibrate(ctrl, 0.5, 40);
                         ctrl.target.obj = null;
                         ctrl.target.startPos = null;
                         ctrl.target.startRot = null;
@@ -308,60 +308,61 @@ function render(time, frame) {
 
                     if (handedness != "right") continue; // only for right controller
                     
-                    if (pressing) {
-                        Controllers.controllers.right.target = rayBox;
-                        const oldPos = model.position.clone();
-                        model.translateZ(-1);
-                        const newPos = model.position.clone();
-                        model.translateZ(1);
-                        const direction = newPos.sub(oldPos);
-                        const raycaster = new THREE.Raycaster(model.position.add(player.position), direction, 0.2, 5);
-                        const arr = raycaster.intersectObjects(getScene().children);
-                        if (arr.length > 0) {
-                            let i = 0;
-                            let obji = 0;
-                            let found = null;
-                            while (!found) {
-                                if (i == arr.length) break;
-                                const obj = arr[i].object;
-                                i++;
-                                if (obj == rayBox) continue;
-                                obji = i-1;
-                                for (const matmod of matModifiable) {
-                                    let matches = false;
-                                    matmod.mesh.traverse(node => {
-                                        if (node.isMesh && node == obj)
-                                            matches = true;
-                                    })
-                                    if (matches) {
-                                        found = matmod;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (arr[obji]) {
-                                let pos = arr[obji].point;
-                                rayBox.position.set(pos.x, pos.y, pos.z);
-                            }
-                            if (pointing) {
-                                if (found != null) {
-                                    pointTimeout -= dt;
-                                    playTick();
-                                } else {
-                                    pointTimeout = 1000;
-                                    stopTick();
-                                }
-                                if (pointTimeout <= 0 && found != null) {
-                                    ModifPanel.showMenu();
-                                    Controllers.vibrate(Controllers.right, 0.5, 50);
-                                    XRHands.setObjectSelected(found);
-                                    stopTick();
-                                    pointTimeout = 1000;
+                    const oldPos = model.position.clone();
+                    model.translateZ(-0.7);
+                    model.translateY(-0.7);
+                    const newPos = model.position.clone();
+                    model.translateZ(0.7);
+                    model.translateY(0.7);
+                    const direction = newPos.sub(oldPos);
+                    const raycaster = new THREE.Raycaster(model.position, direction, 0.1, 4);
+                    const arr = raycaster.intersectObjects(ModifPanel.isOpen? ModifPanel.getObjects(): getScene().children);
+                    if (arr.length > 0) {
+                        let i = 0;
+                        let obji = 0;
+                        let found = null;
+                        while (!found) {
+                            if (i == arr.length) break;
+                            const obj = arr[i].object;
+                            i++;
+                            if (obj == rayBox) continue;
+                            obji = i-1;
+                            for (const matmod of matModifiable) {
+                                let matches = false;
+                                matmod.mesh.traverse(node => {
+                                    if (node.isMesh && node == obj)
+                                        matches = true;
+                                })
+                                if (matches) {
+                                    found = matmod;
+                                    break;
                                 }
                             }
                         }
-                    } else Controllers.controllers.right.target = null;
+                        if (arr[obji]) {
+                            let pos = arr[obji].point;
+                            rayBox.position.set(pos.x, pos.y, pos.z);
+                        }
+                        if (pressing) {
+                            if (found != null) {
+                                pointTimeout -= dt;
+                                playTick();
+                            } else {
+                                pointTimeout = 1000;
+                                stopTick();
+                            }
+                            if (pointTimeout <= 0 && found != null) {
+                                Controllers.controllers.right.target = rayBox;
+                                ModifPanel.showMenu();
+                                Controllers.vibrate(Controllers.right, 0.8, 50);
+                                XRHands.setObjectSelected(found);
+                                stopTick();
+                                pointTimeout = 1000;
+                            }
+                        } else {stopTick(); pointTimeout = 1000;}
+                    }
                 }
+            }
         }
     } catch(err) {log("Error: "+err)}
     renderer.render(scene, camera);
