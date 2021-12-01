@@ -28,7 +28,7 @@ export function init() {
         const textGeometry = new TextGeometry("Selectionnez une couleur:", fontParams)
         textGeometry.computeBoundingBox();
         textGeometry.center();
-        const textMesh = new THREE.Mesh(textGeometry, new THREE.MeshLambertMaterial({color: "white"}));
+        const textMesh = new THREE.Mesh(textGeometry, new THREE.MeshBasicMaterial({color: "white"}));
         textMesh.rotation.y = 1.57;
         textMesh.position.set(0, -0.07, 0);
         panelGroup.add(textMesh);
@@ -40,7 +40,7 @@ export function init() {
     for (const col of colors) {
         let mesh = new THREE.Mesh(
             new THREE.BoxBufferGeometry(blockSize-0.01, blockSize-0.01, blockSize*0.1),
-            new THREE.MeshLambertMaterial({color: col})
+            new THREE.MeshBasicMaterial({color: col})
         );
         mesh.position.set(0, -0.14+blockSize/2, shift);
         mesh.rotation.y = 1.57;
