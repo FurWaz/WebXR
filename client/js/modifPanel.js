@@ -65,6 +65,10 @@ export function init() {
     }
 }
 
+export function getObjects() {
+    return panelGroup.children;
+}
+
 export function showMenu() {
     isOpen = true;
     getPlayer().add(panelGroup);
@@ -77,21 +81,25 @@ export function hideMenu() {
 
 export function update(dt) {
     try {
-    let refBox = (getInput() == "hands")?
+    let hands = getInput() == "hands";
+    let refBox = hands?
         XRHands.boxes.left[XRHands.jointIndex(XRHands.JOINT.INDEX_FINGER_PHALANX_PROXIMAL)].mesh:
         Controllers.controllers.left.model;
-    refBox.translateY(0.2);
+    if (refBox == null) return;
+    hands? refBox.translateY(0.2): refBox.translateX(-0.2);
+    let shift = hands? {x: 0, y: 0, z: 0}: getPlayer().position;
     let newPos = {
-        x: (refBox.position.x - panelGroup.position.x) * (dt/100),
-        y: (refBox.position.y - panelGroup.position.y) * (dt/100),
-        z: (refBox.position.z - panelGroup.position.z) * (dt/100)
+        x: (refBox.position.x - shift.x - panelGroup.position.x) * (dt/100),
+        y: (refBox.position.y - shift.y - panelGroup.position.y) * (dt/100),
+        z: (refBox.position.z - shift.z - panelGroup.position.z) * (dt/100)
     };
-    refBox.translateY(-0.2);
+    hands? refBox.translateY(-0.2): refBox.translateX(0.2);
+    let panelRot = hands? panelGroup.quaternion: panelGroup.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -1.57)));
     let newRot = {
-        x: (refBox.quaternion.x - panelGroup.quaternion.x) * (dt/100),
-        y: (refBox.quaternion.y - panelGroup.quaternion.y) * (dt/100),
-        z: (refBox.quaternion.z - panelGroup.quaternion.z) * (dt/100),
-        w: (refBox.quaternion.w - panelGroup.quaternion.w) * (dt/100)
+        x: (refBox.quaternion.x - panelRot.x) * (dt/100),
+        y: (refBox.quaternion.y - panelRot.y) * (dt/100),
+        z: (refBox.quaternion.z - panelRot.z) * (dt/100),
+        w: (refBox.quaternion.w - panelRot.w) * (dt/100)
     };
 
     panelGroup.position.set(
@@ -120,14 +128,14 @@ export function update(dt) {
                 }
             }
         } else {
-            if (Controllers.controllers.right.target == null || !Controllers.isPointing(Controllers.right)) return;
+            if (Controllers.controllers.right.target == null || !Controllers.isPressing(Controllers.right)) return;
             let bounds = new THREE.Box3().setFromObject(Controllers.controllers.right.target);
             for (const btn of panelButtons) {
                 let btnBounds = new THREE.Box3().setFromObject(btn.mesh);
                 let res = btnBounds.intersectsBox(bounds);
                 if (res) {
                     btn.callback();
-                    Controllers.vibrate(Controllers.right, 1, 45);
+                    Controllers.vibrate(Controllers.right, 0.8, 50);
                     break;
                 }
             }

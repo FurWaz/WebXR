@@ -83,7 +83,6 @@ export function init() {
 function handleController(now, dt) {
     let camera = getCamera();
     let player = getPlayer();
-    (now.handedness == "right")? right.state = now: left.state = now;
     if (now.handedness == "left") {
         let newPos = new THREE.Vector3(player.position.x, player.position.y, player.position.z);
         let mx =  Math.cos(camera.rotation.z)*now.axes[GAMEPAD.AXE_THUMBSTICK_X] 
@@ -120,6 +119,7 @@ export function update(dt) {
             source: source
         };
         handleController(now, dt);
+        (handedness=="right")? right.state = now: left.state = now;
         if (source.gripSpace) {
             let gripPose = getXRFrame().getPose(source.gripSpace, space);
             if (gripPose) {
