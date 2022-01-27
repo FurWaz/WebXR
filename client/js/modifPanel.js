@@ -1,11 +1,11 @@
-import * as THREE from 'https://cdn.skypack.dev/three';
-import { FontLoader } from 'https://cdn.skypack.dev/three/examples/jsm/loaders/FontLoader.js';
-import { TextGeometry } from 'https://cdn.skypack.dev/three/examples/jsm/geometries/TextGeometry.js';
+import * as THREE from 'https://cdn.skypack.dev/three@0.136';
+import { FontLoader } from 'https://cdn.skypack.dev/three@0.136/examples/jsm/loaders/FontLoader.js';
+import { TextGeometry } from 'https://cdn.skypack.dev/three@0.136/examples/jsm/geometries/TextGeometry.js';
 import { getInput, getPlayer, log } from './common.js';
 import * as XRHands from './hand.js';
 import * as Controllers from './controllers.js';
 
-const FONT_URL = "https://cdn.skypack.dev/three/examples/fonts/helvetiker_regular.typeface.json";
+const FONT_URL = "https://cdn.skypack.dev/three@0.136/examples/fonts/helvetiker_regular.typeface.json";
 
 let panelGroup = null;
 let fontParams = {

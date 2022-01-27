@@ -1,4 +1,4 @@
-import * as THREE from 'https://cdn.skypack.dev/three';
+import * as THREE from 'https://cdn.skypack.dev/three@0.136';
 import { getCamera, getInput, getPlayer, getScene, getXRFrame, getXRSession, getXRSpace, log } from "./common.js";
 import { loadModel } from "./load.js";
 

@@ -11,11 +11,12 @@ export class Error {
     }
 }
 
-let socket = null;
+export let socket = null;
 export function log(msg) {
-    if (socket == null) socket = io();
+    if (socket == null) return;
     socket.emit("custom/log", msg);
 }
+setTimeout(() => {socket = io();}, 10);
 
 export function isIterable(obj) {
     if (obj == null) {

@@ -1,11 +1,16 @@
-import * as THREE from 'https://cdn.skypack.dev/three';
-import { VRButton } from 'https://cdn.skypack.dev/three/examples/jsm/webxr/VRButton.js';
-import { log, getXRSession, getScene, setScene, setXRFrame, setXRSession, setXRSpace, setPlayer, setCamera, getInput } from './js/common.js';
+import * as THREE from 'https://cdn.skypack.dev/three@0.136';
+import { VRButton } from 'https://cdn.skypack.dev/three@0.136/examples/jsm/webxr/VRButton.js';
+import { socket, log, getXRSession, getScene, setScene, setXRFrame, setXRSession, setXRSpace, setPlayer, setCamera, getInput } from './js/common.js';
 import { getModelMaterials, loadModel } from './js/load.js';
 import * as XRHands from './js/hand.js';
 import * as collision from './js/collision.js';
 import * as ModifPanel from "./js/modifPanel.js";
 import * as Controllers from './js/controllers.js';
+
+let Player = {
+    HANDS: 1,
+    CONTROLLERS: 2
+};
 
 setScene(new THREE.Scene());
 getScene().background = new THREE.Color(0x051015);
@@ -116,6 +121,42 @@ let rayBox = new THREE.Mesh(
     new THREE.MeshBasicMaterial({color: 0xffffff})
 );
 scene.add(rayBox);
+
+
+setInterval(() => {
+    if (socket == null) return;
+    socket.emit("custom/setPlayer", {
+        playerPos: {x: player.position.x, y: player.position.y, z: player.position.z},
+        playerRot: {x: player.rotation.x, y: player.rotation.y, z: player.rotation.z, w: player.rotation.w},
+        playerHeadPos: {x: camera.position.x, y: camera.position.y, z: camera.position.z},
+        playerHeadRot: {x: camera.rotation.x, y: camera.rotation.y, z: camera.rotation.z, w: camera.rotation.w},
+        inputMode: (getInput() == "hands")? Player.HANDS: Player.CONTROLLERS,
+        playerLeftCtrlPos: (getInput() == "hands")? {x: 0, y: 0, z: 0}: {
+            x: Controllers.left.model.position.x,
+            y: Controllers.left.model.position.y,
+            z: Controllers.left.model.position.z
+        },
+        playerRightCtrlPos: (getInput() == "hands")? {x: 0, y: 0, z: 0}: {
+            x: Controllers.right.model.position.x,
+            y: Controllers.right.model.position.y,
+            z: Controllers.right.model.position.z
+        },
+        playerLeftCtrlRot: (getInput() == "hands")? {x: 0, y: 0, z: 0, w: 0}: {
+            x: Controllers.left.model.rotation.x,
+            y: Controllers.left.model.rotation.y,
+            z: Controllers.left.model.rotation.z,
+            w: Controllers.left.model.rotation.w
+        },
+        playerRightCtrlRot: (getInput() == "hands")? {x: 0, y: 0, z: 0, w: 0}: {
+            x: Controllers.right.model.rotation.x,
+            y: Controllers.right.model.rotation.y,
+            z: Controllers.right.model.rotation.z,
+            w: Controllers.right.model.rotation.w
+        }
+        // ...
+    });
+}, 33);
+
 
 let firstTime = true;
 let lastTime = 0, logTime = 0;

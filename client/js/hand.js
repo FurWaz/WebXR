@@ -1,4 +1,4 @@
-import * as THREE from 'https://cdn.skypack.dev/three';
+import * as THREE from 'https://cdn.skypack.dev/three@0.136';
 import { Error, getScene, getXRSpace, getXRSession, getXRFrame, getPlayer, log, setInput, getInput } from "./common.js";
 
 export const JOINT = {

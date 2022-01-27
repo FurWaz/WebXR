@@ -1,4 +1,4 @@
-import * as THREE from 'https://cdn.skypack.dev/three';
+import * as THREE from 'https://cdn.skypack.dev/three@0.136';
 
 export function intersectsBox(target, mesh) {
     let meshBounds = new THREE.Box3().setFromObject(mesh);
