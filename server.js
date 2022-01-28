@@ -37,8 +37,8 @@ class Rotation {
 class Player {
     static CONTROLLERS = 1;
     static HANDS = 1;
-    constructor(socket) {
-        this.socket = socket;
+    constructor(id) {
+        this.id = id;
         this.position = new Position();
         this.rotation = new Rotation();
         this.mode = Player.CONTROLLERS;
@@ -61,22 +61,28 @@ class Player {
     }
 }
 
+let sockets = [];
+function getSocket(id) {
+    return sockets.find(socket => socket.id == id);
+}
+
 /**@type {Player[]} players */
 let players = [];
 
 io.on("connection", socket => {
-    console.clear();
     console.log("new connection from socket "+socket.id);
-    players.push(new Player(socket));
+    sockets.push(socket);
+    players.push(new Player(socket.id));
     socket.on("custom/log", msg => {
         console.log("[LOG "+socket.id+"]> "+msg);
     });
     socket.on("disconnect", r => {
         console.log("socket "+socket.id+" disconnected: "+r);
-        players = players.filter(p => p.socket.id != socket.id);
+        sockets = sockets.filter(sock => sock.id != socket.id);
+        players = players.filter(player => player.id != socket.id);
     });
     socket.on("custom/setPlayer", data => {
-        let curPlayer = players.find(p => p.socket.id == socket.id);
+        let curPlayer = players.find(p => p.id == socket.id);
         curPlayer.position = data.playerPos;
         curPlayer.rotation = data.playerRot;
         curPlayer.headPos = data.playerHeadPos;
@@ -88,7 +94,7 @@ io.on("connection", socket => {
         curPlayer.hands.right.rotation = data.playerRightCtrlRot;
         curPlayer.hands.left.visible = data.playerLeftCtrlVisible;
         curPlayer.hands.right.visible = data.playerRightCtrlVisible;
-        if (curPlayer.mode == Player.CONTROLLERS) {
+        if (curPlayer.mode == Player.HANDS) {
             curPlayer.hands.left.joints = data.playerLeftCtrlJoints;
             curPlayer.hands.right.joints = data.playerRightCtrlJoints;
         }
@@ -96,8 +102,9 @@ io.on("connection", socket => {
 })
 
 setInterval(()=>{
+    console.log(sockets.map(p => p.id));
     players.forEach(p => {
-        p.socket.emit("custom/getPlayers", {players: players.filter(p2 => p2.socket.id != p.socket.id)});
+        getSocket(p.id)?.emit("custom/getPlayers", {players: players.filter(p2 => p2.id != p.id)});
     });
 }, 33);
 

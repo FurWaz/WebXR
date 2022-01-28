@@ -152,11 +152,41 @@ setInterval(() => {
             y: Controllers.right.model.rotation.y,
             z: Controllers.right.model.rotation.z,
             w: Controllers.right.model.rotation.w
-        }
-        // ...
+        },
+        playerLeftCtrlVisible: true,
+        playerRightCtrlVisible: true,
+        playerLeftCtrlJoints: XRHands.boxes.left.map(box => {return {pos: box.mesh.position, rot: box.mesh.rotation}}),
+        playerRightCtrlJoints: XRHands.boxes.right.map(box => {return {pos: box.mesh.position, rot: box.mesh.rotation}})
     });
 }, 33);
 
+let multiOrigin = new THREE.Group();
+scene.add(multiOrigin);
+
+function setupGetPlayers() {
+    if (socket == null) {
+        setTimeout(setupGetPlayers, 10);
+        return;
+    }
+    socket.on("custom/getPlayers", (data) => {
+        for (var i = multiOrigin.children.length - 1; i >= 0; i--)
+            multiOrigin.remove(multiOrigin.children[i]);
+        data.players.forEach(player => {
+            let playerOrigin = new THREE.Group();
+            playerOrigin.position.set(player.position.x, player.position.y, player.position.z);
+            playerOrigin.rotation.set(player.rotation.x, player.rotation.y, player.rotation.z, player.rotation.w);
+            let head = new THREE.Mesh(
+                new THREE.BoxGeometry(0.2, 0.2, 0.2),
+                new THREE.MeshBasicMaterial({color: 0xff00aa})
+            );
+            head.position.set(player.headPos.x, player.headPos.y, player.headPos.z);
+            head.rotation.set(player.headRot.x, player.headRot.y, player.headRot.z, player.headRot.w);
+            playerOrigin.add(head);
+            multiOrigin.add(playerOrigin);
+        });
+    });
+}
+setupGetPlayers();
 
 let firstTime = true;
 let lastTime = 0, logTime = 0;
